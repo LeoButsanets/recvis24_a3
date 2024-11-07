@@ -1,0 +1,10 @@
+data: "data/sketch_recvis2024_small"
+model_name: "resnet18"
+batch_size: 8            # Reduced batch size to lower memory and CPU usage per step
+epochs: 2                # Reduced number of epochs for quicker testing
+lr: 0.001                # Learning rate remains the same
+momentum: 0.9            # Momentum can remain the same
+seed: 42                 # Random seed for reproducibility
+log_interval: 50         # Increase logging interval to reduce I/O operations
+experiment: "experiment"
+num_workers: 0           # Set num_workers to 0 to avoid multiprocessing overhead

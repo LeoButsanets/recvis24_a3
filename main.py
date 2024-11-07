@@ -1,17 +1,30 @@
 import argparse
+import yaml
 import os
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torchvision import datasets
+from torch.utils.tensorboard import SummaryWriter
 
 from model_factory import ModelFactory
+
+
+patience = 3
+no_improve_epochs = 0
 
 
 def opts() -> argparse.ArgumentParser:
     """Option Handling Function."""
     parser = argparse.ArgumentParser(description="RecVis A3 training script")
+    parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="Path to configuration file",
+    )
+
     parser.add_argument(
         "--data",
         type=str,
@@ -79,6 +92,18 @@ def opts() -> argparse.ArgumentParser:
         help="number of workers for data loading",
     )
     args = parser.parse_args()
+
+    # Load parameters from config file if specified
+    if args.config is not None:
+        with open(args.config, "r") as file:
+            config_params = yaml.safe_load(file)
+        
+        # Update args with values from the config file if they exist
+        for key, value in config_params.items():
+            if hasattr(args, key):
+                setattr(args, key, value)
+
+    return args
     return args
 
 
@@ -89,6 +114,7 @@ def train(
     use_cuda: bool,
     epoch: int,
     args: argparse.ArgumentParser,
+    writer: SummaryWriter,
 ) -> None:
     """Default Training Loop.
 
@@ -113,6 +139,10 @@ def train(
         optimizer.step()
         pred = output.data.max(1, keepdim=True)[1]
         correct += pred.eq(target.data.view_as(pred)).cpu().sum()
+
+        # Log the loss to TensorBoard
+        writer.add_scalar('Training Loss', loss.item(), epoch * len(train_loader) + batch_idx)
+
         if batch_idx % args.log_interval == 0:
             print(
                 "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
@@ -136,6 +166,8 @@ def validation(
     model: nn.Module,
     val_loader: torch.utils.data.DataLoader,
     use_cuda: bool,
+    epoch: int,
+    writer: SummaryWriter,
 ) -> float:
     """Default Validation Loop.
 
@@ -162,6 +194,12 @@ def validation(
         correct += pred.eq(target.data.view_as(pred)).cpu().sum()
 
     validation_loss /= len(val_loader.dataset)
+    accuracy = 100. * correct / len(val_loader.dataset)
+
+    # Log validation loss and accuracy to TensorBoard
+    writer.add_scalar('Validation Loss', validation_loss, epoch)
+    writer.add_scalar('Validation Accuracy', accuracy, epoch)
+    
     print(
         "\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)".format(
             validation_loss,
@@ -171,6 +209,23 @@ def validation(
         )
     )
     return validation_loss
+
+# Save model checkpoint with training parameters
+def save_checkpoint(model, optimizer, epoch, val_loss, args, filepath):
+    checkpoint = {
+        "epoch": epoch,
+        "model_state_dict": model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "val_loss": val_loss,
+        "learning_rate": args.lr,
+        "batch_size": args.batch_size,
+        "momentum": args.momentum,
+        "seed": args.seed,
+        "num_workers": args.num_workers,
+        "model_name": args.model_name,
+    }
+    torch.save(checkpoint, filepath)
+
 
 
 def main():
@@ -183,10 +238,14 @@ def main():
 
     # Set the seed (for reproducibility)
     torch.manual_seed(args.seed)
+    args.experiment = os.path.join(args.experiment, args.model_name)
 
     # Create experiment folder
     if not os.path.isdir(args.experiment):
         os.makedirs(args.experiment)
+
+        # Tensorboard writer
+    writer = SummaryWriter(log_dir='/logs' + f"/{args.model_name}")
 
     # load model and transform
     model, data_transforms = ModelFactory(args.model_name).get_all()
@@ -209,24 +268,37 @@ def main():
         shuffle=False,
         num_workers=args.num_workers,
     )
+    
 
     # Setup optimizer
     optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+
+    # Lerning rate scheduler
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
 
     # Loop over the epochs
     best_val_loss = 1e8
     for epoch in range(1, args.epochs + 1):
         # training loop
-        train(model, optimizer, train_loader, use_cuda, epoch, args)
+        train(model, optimizer, train_loader, use_cuda, epoch, args, writer)
         # validation loop
-        val_loss = validation(model, val_loader, use_cuda)
+        val_loss = validation(model, val_loader, use_cuda, epoch, writer)
         if val_loss < best_val_loss:
             # save the best model for validation
             best_val_loss = val_loss
-            best_model_file = args.experiment + "/model_best.pth"
+            best_model_file = args.experiment + f"/model_best_epoch_{epoch}_val_loss_{val_loss:.4f}.pth"
             torch.save(model.state_dict(), best_model_file)
+        else:
+            no_improve_epochs += 1
+
+        if no_improve_epochs >= patience:
+            print("Early stopping triggered")
+            break
         # also save the model every epoch
-        model_file = args.experiment + "/model_" + str(epoch) + ".pth"
+        model_file = args.experiment + f"/model_epoch_{epoch}_val_loss_{val_loss:.4f}.pth"
+        save_checkpoint(model, optimizer, epoch, val_loss, args, model_file)
+
+
         torch.save(model.state_dict(), model_file)
         print(
             "Saved model to "
@@ -235,6 +307,7 @@ def main():
             + best_model_file
             + "` to generate the Kaggle formatted csv file\n"
         )
+    writer.close()
 
 
 if __name__ == "__main__":
