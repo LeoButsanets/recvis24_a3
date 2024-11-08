@@ -1,0 +1,10 @@
+data: "data/sketch_recvis2024_small" # Use the full dataset to leverage the entire data representation for better training
+model_name: "resnet50"
+batch_size: 64               # Increase batch size to speed up training if memory allows, smaller if facing memory issues
+epochs: 20                      # Set epochs to 20 to allow enough time for convergence while avoiding overfitting
+lr: 0.001                      # Set learning rate to a smaller value (0.0005) to avoid drastic weight changes during fine-tuning
+momentum: 0.9                   # Keep momentum at 0.9 to help accelerate SGD in relevant directions
+seed: 42                        # Set seed for reproducibility
+log_interval: 10                # Log at regular intervals to closely monitor training performance
+experiment: "experiment"        # Path to save experiment results, including model checkpoints
+num_workers: 4                  # Increase number of workers to 4 to speed up data loading while not overwhelming system resources

@@ -13,8 +13,6 @@ from model_factory import ModelFactory
 
 patience = 3
 no_improve_epochs = 0
-
-
 def opts() -> argparse.ArgumentParser:
     """Option Handling Function."""
     parser = argparse.ArgumentParser(description="RecVis A3 training script")
@@ -91,6 +89,11 @@ def opts() -> argparse.ArgumentParser:
         metavar="NW",
         help="number of workers for data loading",
     )
+    parser.add_argument(
+        "--train_last_layer_only",
+        action="store_true",
+        help="If set, only the last layer of the model will be trained",
+    )
     args = parser.parse_args()
 
     # Load parameters from config file if specified
@@ -103,7 +106,6 @@ def opts() -> argparse.ArgumentParser:
             if hasattr(args, key):
                 setattr(args, key, value)
 
-    return args
     return args
 
 
@@ -227,7 +229,6 @@ def save_checkpoint(model, optimizer, epoch, val_loss, args, filepath):
     torch.save(checkpoint, filepath)
 
 
-
 def main():
     """Default Main Function."""
     # options
@@ -244,11 +245,16 @@ def main():
     if not os.path.isdir(args.experiment):
         os.makedirs(args.experiment)
 
-        # Tensorboard writer
-    writer = SummaryWriter(log_dir='/logs' + f"/{args.model_name}")
+    # Create logs directory if it doesn't exist
+    log_dir = os.path.join('logs', f"{args.model_name}/batch_size_{args.batch_size}_lr_{args.lr}")
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    
+    # Tensorboard writer
+    writer = SummaryWriter(log_dir=log_dir)
 
     # load model and transform
-    model, data_transforms = ModelFactory(args.model_name).get_all()
+    model, data_transforms = ModelFactory(args.model_name, args.train_last_layer_only).get_all()
     if use_cuda:
         print("Using GPU")
         model.cuda()
@@ -307,6 +313,9 @@ def main():
             + best_model_file
             + "` to generate the Kaggle formatted csv file\n"
         )
+        # Step the learning rate scheduler
+        scheduler.step()
+        writer.add_scalar('Learning Rate', scheduler.get_last_lr()[0], epoch)
     writer.close()
 
 

@@ -1,5 +1,5 @@
 data: "data/sketch_recvis2024_small"
-model_name: "resnet18"
+model_name: "resnet50"
 batch_size: 8            # Reduced batch size to lower memory and CPU usage per step
 epochs: 2                # Reduced number of epochs for quicker testing
 lr: 0.001                # Learning rate remains the same
