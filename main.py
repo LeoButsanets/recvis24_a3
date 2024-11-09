@@ -1,6 +1,7 @@
 import argparse
 import yaml
 import os
+from tqdm import tqdm
 
 import torch
 import torch.nn as nn
@@ -130,7 +131,7 @@ def train(
     """
     model.train()
     correct = 0
-    for batch_idx, (data, target) in enumerate(train_loader):
+    for batch_idx, (data, target) in tqdm(enumerate(train_loader)):
         if use_cuda:
             data, target = data.cuda(), target.cuda()
         optimizer.zero_grad()

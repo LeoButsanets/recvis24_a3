@@ -1,9 +1,13 @@
 """Python file to instantite the model and the transform that goes with it."""
 
-from data import data_transforms, data_transforms_resnet
+from data import data_transforms, data_transforms_resnet, data_transforms_sketch
 from model import Net
 import torchvision.models as models
 import torch.nn as nn
+
+from torchvision.transforms import functional as F
+
+import torchvision.transforms as transforms
 
 nclasses = 500
 
@@ -44,7 +48,7 @@ class ModelFactory:
             
             num_ftrs = model.fc.in_features
             model.fc = nn.Linear(num_ftrs, nclasses)
-            
+
             if self.only_last_layers:
                 # Ensure the new fully connected layer is trainable
                 for param in model.fc.parameters():
@@ -59,9 +63,9 @@ class ModelFactory:
         if self.model_name == "basic_cnn":
             return data_transforms
         if self.model_name == "resnet18":
-            return data_transforms_resnet
+            return data_transforms_sketch
         if self.model_name == "resnet50":
-            return data_transforms_resnet
+            return data_transforms_sketch
         else:
             raise NotImplementedError("Transform not implemented")
 
