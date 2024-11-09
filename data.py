@@ -1,6 +1,7 @@
 from torchvision.transforms import functional as F
 from PIL import ImageOps
-
+import torch
+import random
 import torchvision.transforms as transforms
 
 
@@ -45,7 +46,20 @@ class RepeatChannels:
     def __call__(self, img):
         return img.repeat(self.num_channels, 1, 1)
 
-# Define the updated transformation
+
+class AddGaussianNoise:
+    def __init__(self, mean=0.0, std=0.1):
+        self.mean = mean
+        self.std = std
+
+    def __call__(self, img):
+        noise = torch.randn(img.size()) * self.std + self.mean
+        mask = img > 0  # Only add noise to non-zero pixels
+        img[mask] += noise[mask]
+        img = torch.clamp(img, 0.0, 1.0)  # Ensure values are within [0, 1]
+        return img
+    
+
 data_transforms_sketch = transforms.Compose(
     [
         transforms.Resize((224, 224)),
@@ -53,6 +67,7 @@ data_transforms_sketch = transforms.Compose(
         InvertColors(),  # Invert colors to make background black and sketch white
         transforms.ToTensor(),
         AdaptiveBinarize(),  # Binarization with a specified threshold
+        AddGaussianNoise(mean=0.0, std=0.5),  # Add Gaussian noise only to non-zero pixels
         RepeatChannels(num_channels=3),  # Duplicate grayscale channel to 3 channels
         transforms.Normalize(mean=[0.485], std=[0.229]),  # Adjust mean and std for grayscale
     ]

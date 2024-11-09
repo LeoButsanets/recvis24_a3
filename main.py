@@ -13,7 +13,8 @@ from model_factory import ModelFactory
 
 
 patience = 3
-no_improve_epochs = 0
+
+
 def opts() -> argparse.ArgumentParser:
     """Option Handling Function."""
     parser = argparse.ArgumentParser(description="RecVis A3 training script")
@@ -82,6 +83,13 @@ def opts() -> argparse.ArgumentParser:
         default="experiment",
         metavar="E",
         help="folder where experiment outputs are located.",
+    )
+    parser.add_argument(
+        "--checkpoint",
+        type=str,
+        default=None,
+        metavar="C",
+        help="checkpoint model to resume training",
     )
     parser.add_argument(
         "--num_workers",
@@ -253,9 +261,19 @@ def main():
     
     # Tensorboard writer
     writer = SummaryWriter(log_dir=log_dir)
+    
+    if args.checkpoint is not None:
+        checkpoint_path = args.checkpoint
+    else:
+        for file in os.listdir(args.experiment):
+            if file.startswith("best_model"):
+                checkpoint_path = os.path.join(args.experiment, file)
+                break
+            else:
+                checkpoint_path = os.path.join(args.experiment, "best_model.pth")
 
     # load model and transform
-    model, data_transforms = ModelFactory(args.model_name, args.train_last_layer_only).get_all()
+    model, data_transforms, start_epoch = ModelFactory(args.model_name, args.train_last_layer_only, checkpoint_path).get_all()
     if use_cuda:
         print("Using GPU")
         model.cuda()
@@ -278,14 +296,16 @@ def main():
     
 
     # Setup optimizer
-    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+    optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
     # Lerning rate scheduler
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
 
     # Loop over the epochs
-    best_val_loss = 1e8
-    for epoch in range(1, args.epochs + 1):
+    best_val_loss = 1e8 
+    no_improve_epochs = 0
+    patience = 3
+    for epoch in range(start_epoch + 1, start_epoch + args.epochs + 1):
         # training loop
         train(model, optimizer, train_loader, use_cuda, epoch, args, writer)
         # validation loop
