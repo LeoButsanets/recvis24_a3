@@ -1,5 +1,6 @@
 import argparse
 import os
+import yaml
 
 import PIL.Image as Image
 import torch
@@ -11,6 +12,12 @@ from model_factory import ModelFactory
 def opts() -> argparse.ArgumentParser:
     """Option Handling Function."""
     parser = argparse.ArgumentParser(description="RecVis A3 evaluation script")
+    parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="Path to configuration file",
+    )
     parser.add_argument(
         "--data",
         type=str,
@@ -39,6 +46,17 @@ def opts() -> argparse.ArgumentParser:
         help="name of the output csv file",
     )
     args = parser.parse_args()
+
+    # Load parameters from config file if specified
+    if args.config is not None:
+        with open(args.config, "r") as file:
+            config_params = yaml.safe_load(file)
+        
+        # Update args with values from the config file if they exist
+        for key, value in config_params.items():
+            if hasattr(args, key):
+                setattr(args, key, value)
+
     return args
 
 
@@ -59,8 +77,8 @@ def main() -> None:
     use_cuda = torch.cuda.is_available()
 
     # load model and transform
-    state_dict = torch.load(args.model)
-    model, data_transforms = ModelFactory(args.model_name).get_all()
+    state_dict = torch.load(args.model) if use_cuda else torch.load(args.model, map_location=torch.device('cpu'))
+    model, data_transforms, _, _ = ModelFactory(model_name=args.model_name, use_cuda=use_cuda).get_all()
     model.load_state_dict(state_dict)
     model.eval()
     if use_cuda:

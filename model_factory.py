@@ -14,8 +14,9 @@ import torchvision.transforms as transforms
 nclasses = 500
 
 class ModelFactory:
-    def __init__(self, model_name: str, only_last_layers: bool, checkpoint_path: str):
+    def __init__(self, model_name: str, only_last_layers: bool = True, checkpoint_path: str = None, use_cuda: bool = False):
         self.model_name = model_name
+        self.use_cuda = use_cuda
         self.only_last_layers = only_last_layers
         self.checkpoint_path = checkpoint_path
         self.model, self.optimizer_state, self.start_epoch = self.init_model()
@@ -29,7 +30,7 @@ class ModelFactory:
         if self.checkpoint_path is not None and os.path.exists(self.checkpoint_path):
             print(f"Loading existing model from {self.checkpoint_path}")
             model = self._create_model_instance()
-            checkpoint = torch.load(self.checkpoint_path, map_location=torch.device('cpu'))
+            checkpoint = torch.load(self.checkpoint_path) if self.use_cuda else torch.load(self.checkpoint_path, map_location=torch.device('cpu'))
             model.load_state_dict(checkpoint['model_state_dict'])
             optimizer_state = checkpoint.get('optimizer_state_dict', None)
             start_epoch = checkpoint.get('epoch', 0)
