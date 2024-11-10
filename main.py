@@ -99,7 +99,7 @@ def opts() -> argparse.ArgumentParser:
         help="number of workers for data loading",
     )
     parser.add_argument(
-        "--train_last_layer_only",
+        "--train_last_layers_only",
         action="store_true",
         help="If set, only the last layer of the model will be trained",
     )
@@ -263,6 +263,7 @@ def main():
     writer = SummaryWriter(log_dir=log_dir)
     
     if args.checkpoint is not None:
+        print(f"Loading model from {args.checkpoint}")
         checkpoint_path = args.checkpoint
     else:
         for file in os.listdir(args.experiment):
@@ -270,10 +271,10 @@ def main():
                 checkpoint_path = os.path.join(args.experiment, file)
                 break
             else:
-                checkpoint_path = os.path.join(args.experiment, "best_model.pth")
+                checkpoint_path = None
 
     # load model and transform
-    model, data_transforms, start_epoch = ModelFactory(args.model_name, args.train_last_layer_only, checkpoint_path).get_all()
+    model, data_transforms, optimizer_state, start_epoch = ModelFactory(args.model_name, args.train_last_layers_only, checkpoint_path).get_all()
     if use_cuda:
         print("Using GPU")
         model.cuda()
@@ -295,8 +296,12 @@ def main():
     )
     
 
-    # Setup optimizer
+    # Initialize optimizer
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
+
+    # Load the optimizer state if it exists
+    if optimizer_state is not None:
+        optimizer.load_state_dict(optimizer_state)
 
     # Lerning rate scheduler
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
@@ -314,7 +319,10 @@ def main():
             # save the best model for validation
             best_val_loss = val_loss
             best_model_file = args.experiment + f"/model_best_epoch_{epoch}_val_loss_{val_loss:.4f}.pth"
-            torch.save(model.state_dict(), best_model_file)
+            # torch.save(model.state_dict(), best_model_file)
+            save_checkpoint(model, optimizer, epoch, val_loss, args, best_model_file)
+
+
         else:
             no_improve_epochs += 1
 
@@ -326,7 +334,7 @@ def main():
         save_checkpoint(model, optimizer, epoch, val_loss, args, model_file)
 
 
-        torch.save(model.state_dict(), model_file)
+        # torch.save(model.state_dict(), model_file)
         print(
             "Saved model to "
             + model_file
