@@ -47,30 +47,24 @@ class ModelFactory:
         if self.model_name == "resnet18":
             model = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
             model.layer4[1].conv2.name = "last_conv"  # Assign a name to the last convolutional layer
-            model.fc = nn.Sequential(
-                nn.Dropout(0.5),  # Add dropout to prevent overfitting
-                nn.Linear(model.fc.in_features, nclasses)
-            )
+            model.fc = nn.Linear(model.fc.in_features, nclasses)
             
             if self.only_last_layers:
-                # Freeze all layers except the last three
+                # Freeze all layers except the last layer
                 for name, param in model.named_parameters():
-                    if not any(layer in name for layer in ["layer4.1", "layer4.0", "fc"]):
+                    if not name.startswith("fc"):
                         param.requires_grad = False
             return model
         
         if self.model_name == "resnet50":
             model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1)
             model.layer4[2].conv3.name = "last_conv"  # Assign a name to the last convolutional layer
-            model.fc = nn.Sequential(
-                nn.Dropout(0.5),  # Add dropout to prevent overfitting
-                nn.Linear(model.fc.in_features, nclasses)
-            )
+            model.fc = nn.Linear(model.fc.in_features, nclasses)
 
             if self.only_last_layers:
-                # Freeze all layers except the last three
+                # Freeze all layers except the last layer
                 for name, param in model.named_parameters():
-                    if not any(layer in name for layer in ["layer4.2", "layer4.1", "fc"]):
+                    if not name.startswith("fc"):
                         param.requires_grad = False
             return model
         

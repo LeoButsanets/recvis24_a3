@@ -10,6 +10,8 @@ from torchvision import datasets
 from torch.utils.tensorboard import SummaryWriter
 
 from model_factory import ModelFactory
+import random
+import string
 
 
 patience = 3
@@ -255,13 +257,15 @@ def main():
         os.makedirs(args.experiment)
 
     # Create logs directory if it doesn't exist
-    log_dir = os.path.join('logs', f"{args.model_name}/batch_size_{args.batch_size}_lr_{args.lr}")
+    # Generate a random string
+    random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    log_dir = os.path.join('logs', f"{args.model_name}/batch_size_{args.batch_size}_lr_{args.lr}_{random_str}")
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     
     # Tensorboard writer
     writer = SummaryWriter(log_dir=log_dir)
-    
+    checkpoint_path = None
     if args.checkpoint is not None:
         print(f"Loading model from {args.checkpoint}")
         checkpoint_path = args.checkpoint
@@ -270,11 +274,9 @@ def main():
             if file.startswith("best_model"):
                 checkpoint_path = os.path.join(args.experiment, file)
                 break
-            else:
-                checkpoint_path = None
 
     # load model and transform
-    model, data_transforms, optimizer_state, start_epoch = ModelFactory(args.model_name, args.train_last_layers_only, checkpoint_path).get_all()
+    model, data_transforms, optimizer_state, start_epoch = ModelFactory(args.model_name, args.train_last_layers_only, checkpoint_path, use_cuda).get_all()
     if use_cuda:
         print("Using GPU")
         model.cuda()
