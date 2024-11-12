@@ -22,6 +22,10 @@ class ModelFactory:
         self.model, self.optimizer_state, self.start_epoch = self.init_model()
         self.transform = self.init_transform()
 
+        # Move model to correct device
+        if self.use_cuda:
+            self.model = self.model.cuda()
+            
         # Print the summary of the model using torchsummary
         self.print_summary()
 
