@@ -23,9 +23,10 @@ class ModelFactory:
         self.transform = self.init_transform()
 
         # Move model to correct device
+        print(f"Moving model to {'cuda' if self.use_cuda else 'cpu'}")
         if self.use_cuda:
             self.model = self.model.cuda()
-            
+
         # Print the summary of the model using torchsummary
         self.print_summary()
 
@@ -100,7 +101,7 @@ class ModelFactory:
 
             # Freeze all layers except the last specified layers
             if self.freeze_layers > 0 and not self.train_full_model:
-                self._set_k_conv_trainable_layers(self.freeze_layers,  model)
+                self._set_k_conv_trainable_layers(self.freeze_layers, model)
 
             # Print the ratio of trainable parameters
             self.print_trainable_ratio(model)
@@ -124,20 +125,20 @@ class ModelFactory:
         else:
             raise NotImplementedError("Transform not implemented")
 
-    def _set_k_conv_trainable_layers(self,k:int, model):
+    def _set_k_conv_trainable_layers(self, k: int, model):
         print(f"Freezing all layers except the last {k} convolutional layers")
-        if k==0:
+        if k == 0:
             return
         list_param = list(model.named_parameters())
-        for name, param in list_param :
+        for name, param in list_param:
             param.requires_grad = False
-        c=0
+        c = 0
         for name, param in reversed(list_param):
             if "conv" in name:
                 print(name)
-                c+=1
+                c += 1
             param.requires_grad = True
-            if c==k:
+            if c == k:
                 break
 
     def print_trainable_ratio(self, model):
