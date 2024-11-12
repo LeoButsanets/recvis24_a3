@@ -94,7 +94,7 @@ class ModelFactory:
 
             # Freeze all layers except the last specified layers
             if self.freeze_layers > 0 and not self.train_full_model:
-                self._set_k_conv_trainable_layers(self.freeze_layers, model)
+                self._set_k_conv_trainable_layers(self.freeze_layers,  model)
 
             # Print the ratio of trainable parameters
             self.print_trainable_ratio(model)
@@ -118,20 +118,18 @@ class ModelFactory:
         else:
             raise NotImplementedError("Transform not implemented")
 
-    def _set_k_conv_trainable_layers(self, k: int, model: nn.Module):
-        if k == 0:
+    def _set_k_conv_trainable_layers(self,k:int, model):
+        if k==0:
             return
         list_param = list(model.named_parameters())
-        # Freeze all layers
-        for name, param in list_param:
+        for name, param in list_param :
             param.requires_grad = False
-        # Unfreeze the last k layers
-        c = 0
+        c=0
         for name, param in reversed(list_param):
-            if "layer" in name or "fc" in name or "classifier" in name:  # Account for HuggingFace's classifier
-                c += 1
+            if "conv" in name:
+                c+=1
             param.requires_grad = True
-            if c == k:
+            if c==k:
                 break
 
     def print_trainable_ratio(self, model):

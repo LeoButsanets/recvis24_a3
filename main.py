@@ -130,6 +130,9 @@ def opts() -> argparse.ArgumentParser:
         for key, value in config_params.items():
             if hasattr(args, key):
                 setattr(args, key, value)
+                
+    # Print to check if k_layers is set correctly
+    print(f"Parsed k_layers: {args.k_layers}")
 
     return args
 
