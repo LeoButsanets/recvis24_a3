@@ -101,9 +101,16 @@ def opts() -> argparse.ArgumentParser:
         help="number of workers for data loading",
     )
     parser.add_argument(
-        "--train_last_layers_only",
-        action="store_true",
-        help="If set, only the last layer of the model will be trained",
+        "--train_full_model",
+        type=bool,
+        default=False,
+        help="Whether to train the full model or not"
+    )
+    parser.add_argument(
+        "--k_layers",
+        type=int,
+        default=0,
+        help="Number of layers to freeze"
     )
     args = parser.parse_args()
 
@@ -258,8 +265,13 @@ def main():
 
     # Create logs directory if it doesn't exist
     # Generate a random string
+
+    
     random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-    log_dir = os.path.join('logs', f"{args.model_name}/batch_size_{args.batch_size}_lr_{args.lr}_{random_str}")
+    model_name_save = f"{args.model_name}/k_layers_{args.k_layers}_batch_size_{args.batch_size}_lr_{args.lr}_{random_str}"
+
+
+    log_dir = os.path.join('logs', model_name_save)
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     
@@ -276,7 +288,7 @@ def main():
                 break
 
     # load model and transform
-    model, data_transforms, optimizer_state, start_epoch = ModelFactory(args.model_name, args.train_last_layers_only, checkpoint_path, use_cuda).get_all()
+    model, data_transforms, optimizer_state, start_epoch = ModelFactory(args.model_name, args.train_full_model, args.k_layers, checkpoint_path, use_cuda).get_all()
     if use_cuda:
         print("Using GPU")
         model.cuda()
@@ -299,14 +311,14 @@ def main():
     
 
     # Initialize optimizer
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = optim.AdamW(model.parameters(), lr=args.lr)
 
     # Load the optimizer state if it exists
     if optimizer_state is not None:
         optimizer.load_state_dict(optimizer_state)
 
     # Lerning rate scheduler
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
     # Loop over the epochs
     best_val_loss = 1e8 
@@ -320,7 +332,7 @@ def main():
         if val_loss < best_val_loss:
             # save the best model for validation
             best_val_loss = val_loss
-            best_model_file = args.experiment + f"/model_best_epoch_{epoch}_val_loss_{val_loss:.4f}.pth"
+            best_model_file = args.experiment + f"/model_{model_name_save}best_epoch_{epoch}_val_loss_{val_loss:.4f}.pth"
             # torch.save(model.state_dict(), best_model_file)
             save_checkpoint(model, optimizer, epoch, val_loss, args, best_model_file)
 
@@ -332,7 +344,7 @@ def main():
             print("Early stopping triggered")
             break
         # also save the model every epoch
-        model_file = args.experiment + f"/model_epoch_{epoch}_val_loss_{val_loss:.4f}.pth"
+        model_file = args.experiment + f"/model_{model_name_save}_epoch_{epoch}_val_loss_{val_loss:.4f}.pth"
         save_checkpoint(model, optimizer, epoch, val_loss, args, model_file)
 
 

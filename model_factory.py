@@ -14,10 +14,11 @@ import torchvision.transforms as transforms
 nclasses = 500
 
 class ModelFactory:
-    def __init__(self, model_name: str, only_last_layers: bool = True, checkpoint_path: str = None, use_cuda: bool = False):
+    def __init__(self, model_name: str, train_full_model: bool = False, freeze_layers: int = 0, checkpoint_path: str = None, use_cuda: bool = False):
         self.model_name = model_name
         self.use_cuda = use_cuda
-        self.only_last_layers = only_last_layers
+        self.freeze_layers = freeze_layers
+        self.train_full_model = train_full_model
         self.checkpoint_path = checkpoint_path
         self.model, self.optimizer_state, self.start_epoch = self.init_model()
         self.transform = self.init_transform()
@@ -46,28 +47,42 @@ class ModelFactory:
         
         if self.model_name == "resnet18":
             model = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
-            model.layer4[1].conv2.name = "last_conv"  # Assign a name to the last convolutional layer
+            
+            # Add dropout to the convolutional layers to prevent overfitting
+            model.layer4[1].conv2 = nn.Sequential(
+                model.layer4[1].conv2,
+                nn.Dropout(0.5)
+            )
+
             model.fc = nn.Linear(model.fc.in_features, nclasses)
             
-            if self.only_last_layers:
-                # Freeze all layers except the last layer
-                for name, param in model.named_parameters():
-                    if not name.startswith("fc"):
-                        param.requires_grad = False
+            # Freeze all layers except the last specified layers
+            if self.freeze_layers > 0 and not train_full_model:
+                self.freeze_k_layers(self.freeze_layers, model)
+ 
+
             return model
-        
+
         if self.model_name == "resnet50":
             model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1)
-            model.layer4[2].conv3.name = "last_conv"  # Assign a name to the last convolutional layer
-            model.fc = nn.Linear(model.fc.in_features, nclasses)
+            
+            # Adding dropout layers in convolutional blocks
+            model.layer4[2].conv3 = nn.Sequential(
+                model.layer4[2].conv3,
+                nn.Dropout(0.5)
+            )
 
-            if self.only_last_layers:
-                # Freeze all layers except the last layer
-                for name, param in model.named_parameters():
-                    if not name.startswith("fc"):
-                        param.requires_grad = False
+            model.fc = nn.Sequential(
+                nn.Dropout(0.5),  # Add dropout before fully connected layer to prevent overfitting
+                nn.Linear(model.fc.in_features, nclasses)
+            )
+
+            # Freeze all layers except the last specified layers
+            if self.freeze_layers > 0:
+                self.freeze_k_layers(self.freeze_layers, model)
+
             return model
-        
+
         else:
             raise NotImplementedError("Model not implemented")
 
@@ -75,11 +90,21 @@ class ModelFactory:
         if self.model_name == "basic_cnn":
             return data_transforms
         if self.model_name == "resnet18":
-            return data_transforms_sketch
+            return data_transforms_resnet
         if self.model_name == "resnet50":
-            return data_transforms_sketch
+            print("Using data_transforms_resnet")
+            return data_transforms_resnet
         else:
             raise NotImplementedError("Transform not implemented")
+
+    # Add a method that freezes all layers except the last k layers
+    def freeze_k_layers(self, k: int, model):
+        print(f"Freezing all layers except the last {k} layers")
+        layers = list(model.children())
+        # Freeze layers except the last k layers
+        for i, layer in enumerate(layers[:-k]):
+            for param in layer.parameters():
+                param.requires_grad = False
 
     def get_model(self):
         return self.model
