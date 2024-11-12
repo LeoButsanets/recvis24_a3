@@ -14,13 +14,11 @@ data_transforms = transforms.Compose(
 )
 
 
-# Define data augmentation
+# Define data augmentation with less variation
 data_augmentation = transforms.Compose([
-    transforms.RandomHorizontalFlip(p=0.5),
-    transforms.RandomRotation(degrees=15),
-    transforms.RandomResizedCrop(size=(224, 224), scale=(0.9, 1.0))
+    transforms.RandomHorizontalFlip(p=0.2),
+    transforms.RandomRotation(degrees=5)
 ])
-
 
 data_transforms_resnet = transforms.Compose(
     [
@@ -30,7 +28,14 @@ data_transforms_resnet = transforms.Compose(
         data_augmentation,
     ]
 )
-    
+
+data_transforms_resnet_augmented = transforms.Compose(
+    [
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ]
+)  
 
 
 

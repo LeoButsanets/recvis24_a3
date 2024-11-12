@@ -13,9 +13,16 @@ from model_factory import ModelFactory
 import random
 import string
 
+import wandb
+
+# Get the W&B API key from environment variables
+wandb_api_key = os.getenv("WANDB_API_KEY")
+
+# Login to W&B
+wandb.login(key=wandb_api_key)
+
 
 patience = 3
-
 
 def opts() -> argparse.ArgumentParser:
     """Option Handling Function."""
@@ -126,7 +133,6 @@ def opts() -> argparse.ArgumentParser:
 
     return args
 
-
 def train(
     model: nn.Module,
     optimizer: torch.optim.Optimizer,
@@ -160,8 +166,9 @@ def train(
         pred = output.data.max(1, keepdim=True)[1]
         correct += pred.eq(target.data.view_as(pred)).cpu().sum()
 
-        # Log the loss to TensorBoard
+        # Log the loss to TensorBoard and Weights & Biases
         writer.add_scalar('Training Loss', loss.item(), epoch * len(train_loader) + batch_idx)
+        wandb.log({"Training Loss": loss.item(), "epoch": epoch})
 
         if batch_idx % args.log_interval == 0:
             print(
@@ -173,14 +180,16 @@ def train(
                     loss.data.item(),
                 )
             )
+    accuracy = 100.0 * correct / len(train_loader.dataset)
     print(
         "\nTrain set: Accuracy: {}/{} ({:.0f}%)\n".format(
             correct,
             len(train_loader.dataset),
-            100.0 * correct / len(train_loader.dataset),
+            accuracy,
         )
     )
-
+    # Log training accuracy to Weights & Biases
+    wandb.log({"Training Accuracy": accuracy, "epoch": epoch})
 
 def validation(
     model: nn.Module,
@@ -216,9 +225,9 @@ def validation(
     validation_loss /= len(val_loader.dataset)
     accuracy = 100. * correct / len(val_loader.dataset)
 
-    # Log validation loss and accuracy to TensorBoard
-    writer.add_scalar('Validation Loss', validation_loss, epoch)
+    # Log validation loss and accuracy to TensorBoard and Weights & Biases
     writer.add_scalar('Validation Accuracy', accuracy, epoch)
+    wandb.log({"Validation Loss": validation_loss, "Validation Accuracy": accuracy, "epoch": epoch})
     
     print(
         "\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)".format(
@@ -229,6 +238,7 @@ def validation(
         )
     )
     return validation_loss
+
 # Save model checkpoint with training parameters
 def save_checkpoint(model, optimizer, epoch, val_loss, args, filepath):
     checkpoint = {
@@ -246,6 +256,8 @@ def save_checkpoint(model, optimizer, epoch, val_loss, args, filepath):
     # Create parent directory if it doesn't exist
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
     torch.save(checkpoint, filepath)
+
+
 
 def main():
     """Default Main Function."""
@@ -307,7 +319,7 @@ def main():
     )
     
     # Initialize optimizer
-    optimizer = optim.AdamW(model.parameters(), lr=args.lr)
+    optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
 
     # Load the optimizer state if it exists
     if optimizer_state is not None:
@@ -320,11 +332,15 @@ def main():
     best_val_loss = 1e8 
     no_improve_epochs = 0
     patience = 3
+    wandb.init(project="AS3", name=model_name_save)
     for epoch in range(start_epoch + 1, start_epoch + args.epochs + 1):
         # training loop
         train(model, optimizer, train_loader, use_cuda, epoch, args, writer)
         # validation loop
         val_loss = validation(model, val_loader, use_cuda, epoch, writer)
+        writer.add_scalar('Validation Loss', val_loss, epoch)
+        wandb.log({"Validation Loss": val_loss, "epoch": epoch})
+
         if val_loss < best_val_loss:
             # save the best model for validation
             best_val_loss = val_loss
@@ -352,9 +368,10 @@ def main():
         # Step the learning rate scheduler
         scheduler.step()
         writer.add_scalar('Learning Rate', scheduler.get_last_lr()[0], epoch)
+        wandb.log({"Learning Rate": scheduler.get_last_lr()[0], "epoch": epoch})
     
     writer.close()
-
+    wandb.finish()
 
 if __name__ == "__main__":
     main()
