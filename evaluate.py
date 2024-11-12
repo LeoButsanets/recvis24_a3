@@ -92,7 +92,7 @@ def main() -> None:
 
     # load model and transform
     state_dict = torch.load(args.model) if use_cuda else torch.load(args.model, map_location=torch.device('cpu'))
-    model, data_transforms, _, _ = ModelFactory(model_name=args.model_name, train_full_model=train_full_model, freeze_layers = args.k_layers, use_cuda=use_cuda).get_all()
+    model, data_transforms, _, _ = ModelFactory(model_name=args.model_name, train_full_model=args.train_full_model, freeze_layers = args.k_layers, use_cuda=use_cuda).get_all()
     model.load_state_dict(state_dict)
     model.eval()
     if use_cuda:
