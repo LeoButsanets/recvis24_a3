@@ -55,7 +55,6 @@ class ModelFactory:
                 nn.Dropout(0.5)
             )
             model.fc = nn.Linear(model.fc.in_features, nclasses)
-
             # Freeze all layers except the last specified layers
             if self.freeze_layers > 0 and not self.train_full_model:
                 self._set_k_conv_trainable_layers(self.freeze_layers, model)
