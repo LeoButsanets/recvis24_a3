@@ -91,10 +91,11 @@ def main() -> None:
     use_cuda = torch.cuda.is_available()
 
     # load model and transform
-    checkpoint = torch.load(args.model) if use_cuda else torch.load(args.model, map_location=torch.device('cpu'))
+    checkpoint = torch.load(args.model, weights_only=False)
+    state_dict = checkpoint['model_state_dict']
     # Load the model state dict from the checkpoint
     state_dict = checkpoint['model_state_dict']
-    
+
     model, data_transforms, _, _ = ModelFactory(model_name=args.model_name, train_full_model=args.train_full_model, freeze_layers = args.k_layers, use_cuda=use_cuda).get_all()
     model.load_state_dict(state_dict)
     model.eval()

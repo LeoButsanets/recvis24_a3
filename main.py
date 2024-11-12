@@ -347,7 +347,7 @@ def main():
         if val_loss < best_val_loss:
             # save the best model for validation
             best_val_loss = val_loss
-            best_model_file = os.path.join(args.experiment, f"model_{model_name_save}_best_epoch_{epoch}_val_loss_{val_loss:.4f}.pth")
+            best_model_file = os.path.join(args.experiment, f"best_model_{args.model_name}_epoch{model_name_save}_{epoch}_val_loss_{val_loss:.4f}.pth")
             save_checkpoint(model, optimizer, epoch, val_loss, args, best_model_file)
         else:
             no_improve_epochs += 1
@@ -357,7 +357,7 @@ def main():
             break
 
         # Save the model every epoch
-        model_file = os.path.join(args.experiment, f"model_{model_name_save}_epoch_{epoch}_val_loss_{val_loss:.4f}.pth")
+        model_file = os.path.join(args.experiment, f"best_model_{args.model_name}_epoch{model_name_save}_{epoch}_val_loss_{val_loss:.4f}.pth")
         save_checkpoint(model, optimizer, epoch, val_loss, args, model_file)
 
         print(
@@ -367,7 +367,6 @@ def main():
             + best_model_file
             + "` to generate the Kaggle formatted csv file\n"
         )
-
         # Step the learning rate scheduler
         scheduler.step()
         writer.add_scalar('Learning Rate', scheduler.get_last_lr()[0], epoch)

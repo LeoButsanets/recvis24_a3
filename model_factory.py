@@ -115,10 +115,10 @@ class ModelFactory:
         if self.model_name == "basic_cnn":
             return data_transforms
         if self.model_name == "resnet18":
-            return data_transforms_resnet
+            return data_transforms_sketch
         if self.model_name == "resnet50":
             print("Using data_transforms_resnet")
-            return data_transforms_resnet
+            return data_transforms_sketch
         if self.model_name.startswith("huggingface/"):
             # Use the same transforms as resnet for simplicity
             return data_transforms_resnet
