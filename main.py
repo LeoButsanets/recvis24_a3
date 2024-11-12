@@ -15,13 +15,6 @@ import string
 
 import wandb
 
-# Get the W&B API key from environment variables
-wandb_api_key = os.getenv("WANDB_API_KEY")
-
-# Login to W&B
-wandb.login(key=wandb_api_key)
-
-
 patience = 3
 
 def opts() -> argparse.ArgumentParser:
@@ -68,6 +61,13 @@ def opts() -> argparse.ArgumentParser:
         default=0.1,
         metavar="LR",
         help="learning rate (default: 0.01)",
+    )
+    parser.add_argument(
+        "--min_lr",
+        type=float,
+        default=0.001,
+        metavar="MIN_LR",
+        help="mnimum learning rate (default: 0.001)",
     )
     parser.add_argument(
         "--momentum",
@@ -319,14 +319,14 @@ def main():
     )
     
     # Initialize optimizer
-    optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
+    optimizer = optim.AdamW(model.parameters(), lr=args.lr)
 
     # Load the optimizer state if it exists
     if optimizer_state is not None:
         optimizer.load_state_dict(optimizer_state)
 
-    # Learning rate scheduler
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
+    # Learning rate scheduler with minimum learning rate
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs, eta_min=args.min_lr)
 
     # Loop over the epochs
     best_val_loss = 1e8 
