@@ -54,10 +54,12 @@ class ModelFactory:
                 model.layer4[1].conv2,
                 nn.Dropout(0.5)
             )
-            model.fc = nn.Linear(model.fc.in_features, nclasses)
+
             # Freeze all layers except the last specified layers
             if self.freeze_layers > 0 and not self.train_full_model:
                 self._set_k_conv_trainable_layers(self.freeze_layers, model)
+
+            model.fc = nn.Linear(model.fc.in_features, nclasses)
 
             # Print the ratio of trainable parameters
             self.print_trainable_ratio(model)
@@ -119,6 +121,7 @@ class ModelFactory:
             raise NotImplementedError("Transform not implemented")
 
     def _set_k_conv_trainable_layers(self,k:int, model):
+        print(f"Freezing all layers except the last {k} convolutional layers")
         if k==0:
             return
         list_param = list(model.named_parameters())
@@ -127,6 +130,7 @@ class ModelFactory:
         c=0
         for name, param in reversed(list_param):
             if "conv" in name:
+                print(name)
                 c+=1
             param.requires_grad = True
             if c==k:
