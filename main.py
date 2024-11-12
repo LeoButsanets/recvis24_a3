@@ -116,7 +116,7 @@ def opts() -> argparse.ArgumentParser:
     parser.add_argument(
         "--k_layers",
         type=int,
-        default=0,
+        default=3,
         help="Number of layers to freeze"
     )
     args = parser.parse_args()
@@ -130,7 +130,7 @@ def opts() -> argparse.ArgumentParser:
         for key, value in config_params.items():
             if hasattr(args, key):
                 setattr(args, key, value)
-                
+
     # Print to check if k_layers is set correctly
     print(f"Parsed k_layers: {args.k_layers}")
 
