@@ -1,5 +1,3 @@
-"""Python file to instantiate the model and the transform that goes with it."""
-
 from data import data_transforms, data_transforms_resnet, data_transforms_sketch
 from model import Net
 import torchvision.models as models
@@ -7,9 +5,9 @@ import torch.nn as nn
 import os
 import torch
 import torch.nn.functional as F
-
 from torchvision.transforms import functional as F
 import torchvision.transforms as transforms
+from torchsummary import summary
 
 nclasses = 500
 
@@ -22,6 +20,9 @@ class ModelFactory:
         self.checkpoint_path = checkpoint_path
         self.model, self.optimizer_state, self.start_epoch = self.init_model()
         self.transform = self.init_transform()
+
+        # Print the summary of the model using torchsummary
+        self.print_summary()
 
     def init_model(self):
         model = None
@@ -57,9 +58,11 @@ class ModelFactory:
             model.fc = nn.Linear(model.fc.in_features, nclasses)
             
             # Freeze all layers except the last specified layers
-            if self.freeze_layers > 0 and not train_full_model:
-                self.freeze_k_layers(self.freeze_layers, model)
- 
+            if self.freeze_layers > 0 and not self.train_full_model:
+                self._set_k_conv_trainable_layers(self.freeze_layers, model)
+
+            # Print the ratio of trainable parameters
+            self.print_trainable_ratio(model)
 
             return model
 
@@ -78,8 +81,11 @@ class ModelFactory:
             )
 
             # Freeze all layers except the last specified layers
-            if self.freeze_layers > 0:
-                self.freeze_k_layers(self.freeze_layers, model)
+            if self.freeze_layers > 0 and not self.train_full_model:
+                self._set_k_conv_trainable_layers(self.freeze_layers, model)
+
+            # Print the ratio of trainable parameters
+            self.print_trainable_ratio(model)
 
             return model
 
@@ -97,14 +103,33 @@ class ModelFactory:
         else:
             raise NotImplementedError("Transform not implemented")
 
-    # Add a method that freezes all layers except the last k layers
-    def freeze_k_layers(self, k: int, model):
-        print(f"Freezing all layers except the last {k} layers")
-        layers = list(model.children())
-        # Freeze layers except the last k layers
-        for i, layer in enumerate(layers[:-k]):
-            for param in layer.parameters():
-                param.requires_grad = False
+    def _set_k_conv_trainable_layers(self, k:int, model: nn.Module):
+        if k==0:
+            return
+        list_param = list(model.named_parameters())
+        list_names = [name for name, param in list_param][:-k]
+        for name, param in list_param :
+            param.requires_grad = False
+        c=0
+        for name, param in reversed(list_param):
+            if "conv" in name:
+                c+=1
+            param.requires_grad = True
+            if c==k:
+                break
+
+    def print_trainable_ratio(self, model):
+        total_params = sum(p.numel() for p in model.parameters())
+        trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        ratio = trainable_params / total_params
+        print(f"Trainable parameters ratio: {ratio:.4f} (1 means all parameters are trainable)")
+
+    def print_summary(self):
+        # Print the summary of the model using torchsummary
+        if self.use_cuda:
+            summary(self.model, input_size=(3, 224, 224), device="cuda")
+        else:
+            summary(self.model, input_size=(3, 224, 224), device="cpu")
 
     def get_model(self):
         return self.model

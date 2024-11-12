@@ -229,7 +229,6 @@ def validation(
         )
     )
     return validation_loss
-
 # Save model checkpoint with training parameters
 def save_checkpoint(model, optimizer, epoch, val_loss, args, filepath):
     checkpoint = {
@@ -244,8 +243,9 @@ def save_checkpoint(model, optimizer, epoch, val_loss, args, filepath):
         "num_workers": args.num_workers,
         "model_name": args.model_name,
     }
+    # Create parent directory if it doesn't exist
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
     torch.save(checkpoint, filepath)
-
 
 def main():
     """Default Main Function."""
@@ -264,12 +264,8 @@ def main():
         os.makedirs(args.experiment)
 
     # Create logs directory if it doesn't exist
-    # Generate a random string
-
-    
     random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
     model_name_save = f"{args.model_name}/k_layers_{args.k_layers}_batch_size_{args.batch_size}_lr_{args.lr}_{random_str}"
-
 
     log_dir = os.path.join('logs', model_name_save)
     if not os.path.exists(log_dir):
@@ -287,8 +283,9 @@ def main():
                 checkpoint_path = os.path.join(args.experiment, file)
                 break
 
-    # load model and transform
+    # Load model and transform
     model, data_transforms, optimizer_state, start_epoch = ModelFactory(args.model_name, args.train_full_model, args.k_layers, checkpoint_path, use_cuda).get_all()
+    
     if use_cuda:
         print("Using GPU")
         model.cuda()
@@ -309,7 +306,6 @@ def main():
         num_workers=args.num_workers,
     )
     
-
     # Initialize optimizer
     optimizer = optim.AdamW(model.parameters(), lr=args.lr)
 
@@ -317,7 +313,7 @@ def main():
     if optimizer_state is not None:
         optimizer.load_state_dict(optimizer_state)
 
-    # Lerning rate scheduler
+    # Learning rate scheduler
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
     # Loop over the epochs
@@ -332,23 +328,19 @@ def main():
         if val_loss < best_val_loss:
             # save the best model for validation
             best_val_loss = val_loss
-            best_model_file = args.experiment + f"/model_{model_name_save}best_epoch_{epoch}_val_loss_{val_loss:.4f}.pth"
-            # torch.save(model.state_dict(), best_model_file)
+            best_model_file = os.path.join(args.experiment, f"model_{model_name_save}_best_epoch_{epoch}_val_loss_{val_loss:.4f}.pth")
             save_checkpoint(model, optimizer, epoch, val_loss, args, best_model_file)
-
-
         else:
             no_improve_epochs += 1
 
         if no_improve_epochs >= patience:
             print("Early stopping triggered")
             break
-        # also save the model every epoch
-        model_file = args.experiment + f"/model_{model_name_save}_epoch_{epoch}_val_loss_{val_loss:.4f}.pth"
+
+        # Save the model every epoch
+        model_file = os.path.join(args.experiment, f"model_{model_name_save}_epoch_{epoch}_val_loss_{val_loss:.4f}.pth")
         save_checkpoint(model, optimizer, epoch, val_loss, args, model_file)
 
-
-        # torch.save(model.state_dict(), model_file)
         print(
             "Saved model to "
             + model_file
@@ -356,9 +348,11 @@ def main():
             + best_model_file
             + "` to generate the Kaggle formatted csv file\n"
         )
+
         # Step the learning rate scheduler
         scheduler.step()
         writer.add_scalar('Learning Rate', scheduler.get_last_lr()[0], epoch)
+    
     writer.close()
 
 

@@ -13,15 +13,40 @@ data_transforms = transforms.Compose(
     ]
 )
 
+
+# Define data augmentation
+data_augmentation = transforms.Compose([
+    transforms.RandomHorizontalFlip(p=0.5),
+    transforms.RandomRotation(degrees=15),
+    transforms.RandomResizedCrop(size=(224, 224), scale=(0.9, 1.0))
+])
+
+
 data_transforms_resnet = transforms.Compose(
     [
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        data_augmentation,
     ]
 )
     
-   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class InvertColorsIfNeeded:
     def __call__(self, img):
         # Convert the image to grayscale to calculate mean intensity
@@ -93,13 +118,6 @@ class GaussianBlur:
         return kernel
 
 
-
-# Define data augmentation
-data_augmentation = transforms.Compose([
-    transforms.RandomHorizontalFlip(p=0.5),
-    transforms.RandomRotation(degrees=15),
-    transforms.RandomResizedCrop(size=(224, 224), scale=(0.9, 1.0))  # Reduce zoom
-])
 
 data_transforms_sketch = transforms.Compose(
     [
