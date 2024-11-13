@@ -365,7 +365,6 @@ def main():
         })
         
         # validation loss to save model checkpoint
-        val_loss = val_accuracy  # Use accuracy for deciding on saving the model
         writer.add_scalar('Validation Loss', val_loss, epoch)
         wandb.log({"Validation Loss": val_loss, "epoch": epoch})
 
