@@ -186,7 +186,7 @@ def train(
 
         # Log the loss to TensorBoard and Weights & Biases
         writer.add_scalar('Training Loss', loss.item(), epoch * len(train_loader) + batch_idx)
-        wandb.log({"Training Loss": loss.item(), "epoch": epoch})
+        
 
         if batch_idx % args.log_interval == 0:
             print(
@@ -198,6 +198,8 @@ def train(
                     loss.data.item(),
                 )
             )
+            wandb.log({"Training Loss": loss.item(), "epoch": epoch * len(train_loader) + batch_idx})
+
     accuracy = 100.0 * correct / len(train_loader.dataset)
     print(
         "\nTrain set: Accuracy: {}/{} ({:.0f}%)\n".format(
@@ -205,9 +207,7 @@ def train(
             len(train_loader.dataset),
             accuracy,
         )
-    )
-    # Log training accuracy to Weights & Biases
-    wandb.log({"Training Accuracy": accuracy, "epoch": epoch})
+    ) 
 
     return accuracy
 
@@ -216,6 +216,7 @@ def validation(
     val_loader: torch.utils.data.DataLoader,
     use_cuda: bool,
     epoch: int,
+    args: argparse.ArgumentParser,
     writer: SummaryWriter,
 ) -> float:
     """Default Validation Loop.
@@ -235,7 +236,7 @@ def validation(
         if use_cuda:
             data, target = data.cuda(), target.cuda()
         output = model(data)
-        output = output.logits
+        output = output.logits if args.model_name in ["vit_omnivec", "dinov2"] else output
         # sum up batch loss
         criterion = torch.nn.CrossEntropyLoss(reduction="mean")
         validation_loss += criterion(output, target).data.item()
@@ -248,7 +249,7 @@ def validation(
 
     # Log validation loss and accuracy to TensorBoard and Weights & Biases
     writer.add_scalar('Validation Accuracy', accuracy, epoch)
-    wandb.log({"Validation Loss": validation_loss, "Validation Accuracy": accuracy, "epoch": epoch})
+    
     
     print(
         "\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)".format(
@@ -258,6 +259,7 @@ def validation(
             100.0 * correct / len(val_loader.dataset),
         )
     )
+
     return validation_loss, accuracy
 
 # Save model checkpoint with training parameters
@@ -298,7 +300,7 @@ def main():
 
     # Create logs directory if it doesn't exist
     random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-    model_name_save = f"{args.model_name}/k_layers_{args.k_layers}_batch_size_{args.batch_size}_lr_{args.lr}_{random_str}" + ("_augmented" if args.data_augmentation else "")
+    model_name_save = f"{args.model_name}/k_layers_{args.k_layers}_batch_size_{args.batch_size}_lr_{args.lr}" + ("_augmented" if args.data_augmentation else "" ) + f"_{random_str}"
 
     log_dir = os.path.join('logs', model_name_save)
     if not os.path.exists(log_dir):
@@ -353,13 +355,16 @@ def main():
     best_val_loss = 1e8 
     no_improve_epochs = 0
     patience = args.patience
-    wandb.init(project="AS3", name=model_name_save)
+    
+    # Initialize Weights & Biases
+    wandb.init(project="AS3", name=args.model_name, config=args)
     for epoch in range(start_epoch + 1, start_epoch + args.epochs + 1):
         # training loop
         train_accuracy = train(model, optimizer, train_loader, use_cuda, epoch, args, writer)
         # validation loop
-        val_loss, val_accuracy = validation(model, val_loader, use_cuda, epoch, writer)
+        val_loss, val_accuracy = validation(model, val_loader, use_cuda, epoch, args, writer)
         writer.add_scalar('Validation Loss', val_loss, epoch)
+
         # Log accuracies on the same plot
         wandb.log({
             "Training Accuracy": train_accuracy,
