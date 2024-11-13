@@ -100,6 +100,14 @@ def opts() -> argparse.ArgumentParser:
         metavar="C",
         help="checkpoint model to resume training",
     )
+
+    parser.add_argument(
+        "--patience",
+        type=int,
+        default=3,
+        metavar="P",
+        help="Early stopping patience",
+    )
     parser.add_argument(
         "--num_workers",
         type=int,
@@ -200,6 +208,8 @@ def train(
     # Log training accuracy to Weights & Biases
     wandb.log({"Training Accuracy": accuracy, "epoch": epoch})
 
+    return accuracy
+
 def validation(
     model: nn.Module,
     val_loader: torch.utils.data.DataLoader,
@@ -246,7 +256,7 @@ def validation(
             100.0 * correct / len(val_loader.dataset),
         )
     )
-    return validation_loss
+    return validation_loss, val_accuracy
 
 # Save model checkpoint with training parameters
 def save_checkpoint(model, optimizer, epoch, val_loss, args, filepath):
@@ -340,21 +350,34 @@ def main():
     # Loop over the epochs
     best_val_loss = 1e8 
     no_improve_epochs = 0
-    patience = 3
+    patience = args.patience
     wandb.init(project="AS3", name=model_name_save)
     for epoch in range(start_epoch + 1, start_epoch + args.epochs + 1):
         # training loop
-        train(model, optimizer, train_loader, use_cuda, epoch, args, writer)
+        train_accuracy = train(model, optimizer, train_loader, use_cuda, epoch, args, writer)
         # validation loop
-        val_loss = validation(model, val_loader, use_cuda, epoch, writer)
+        val_loss, val_accuracy = validation(model, val_loader, use_cuda, epoch, writer)
+        writer.add_scalar('Validation Loss', val_loss, epoch)
+        # Log accuracies on the same plot
+        wandb.log({
+            "Training Accuracy": train_accuracy,
+            "Validation Accuracy": val_accuracy,
+            "epoch": epoch
+        })
+        
+        # validation loss to save model checkpoint
+        val_loss = val_accuracy  # Use accuracy for deciding on saving the model
         writer.add_scalar('Validation Loss', val_loss, epoch)
         wandb.log({"Validation Loss": val_loss, "epoch": epoch})
+
 
         if val_loss < best_val_loss:
             # save the best model for validation
             best_val_loss = val_loss
             best_model_file = os.path.join(args.experiment, f"best_model_{args.model_name}_epoch{model_name_save}_{epoch}_val_loss_{val_loss:.4f}.pth")
             save_checkpoint(model, optimizer, epoch, val_loss, args, best_model_file)
+            no_improve_epochs = 0  # Reset the patience counter when an improvement is seen
+
         else:
             no_improve_epochs += 1
 

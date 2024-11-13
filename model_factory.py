@@ -122,7 +122,11 @@ class ModelFactory:
                 return data_transforms_resnet
         if self.model_name == "resnet50":
             print("Using data_transforms_resnet")
-            return data_transforms_resnet_augmented
+            if self.augment:
+                print("Using data augmentation")
+                return data_transforms_sketch
+            else:
+                return data_transforms_resnet
         if self.model_name.startswith("huggingface/"):
             # Use the same transforms as resnet for simplicity
             return data_transforms_resnet
