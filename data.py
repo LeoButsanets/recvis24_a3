@@ -58,10 +58,6 @@ data_transforms_resnet_augmented = transforms.Compose(
 
 
 
-
-
-
-
 class InvertColorsIfNeeded:
     def __call__(self, img):
         # Convert the image to grayscale to calculate mean intensity
@@ -133,6 +129,15 @@ class GaussianBlur:
         return kernel
 
 
+# Define data augmentation
+
+
+# Define data augmentation with less variation
+data_augmentation = transforms.Compose([
+    transforms.RandomHorizontalFlip(p=0.2),
+    transforms.RandomRotation(degrees=5)
+])
+
 
 data_transforms_sketch = transforms.Compose(
     [
@@ -143,8 +148,8 @@ data_transforms_sketch = transforms.Compose(
         AdaptiveBinarize(),  # Binarization with a specified threshold
         GaussianBlur(kernel_size=5, sigma=0.2),  # Apply Gaussian blur to smooth out the image
         RepeatChannels(num_channels=3),  # Duplicate grayscale channel to 3 channels
-        data_augmentation,  # Apply data augmentation
+        # data_augmentation,  # Apply data augmentation
         transforms.Normalize(mean=[0.485], std=[0.229]),  # Adjust mean and std for grayscale
    
     ]
-)  
+)   

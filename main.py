@@ -256,7 +256,7 @@ def validation(
             100.0 * correct / len(val_loader.dataset),
         )
     )
-    return validation_loss, val_accuracy
+    return validation_loss, accuracy
 
 # Save model checkpoint with training parameters
 def save_checkpoint(model, optimizer, epoch, val_loss, args, filepath):
