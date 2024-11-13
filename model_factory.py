@@ -8,6 +8,8 @@ from transformers import AutoModelForImageClassification
 import torchvision.transforms as transforms
 from torchsummary import summary
 import timm  # Library for pretrained models from Hugging Face
+from torchinfo import summary as torchinfo_summary  # Import torchinfo
+
 
 nclasses = 500
 
@@ -107,6 +109,23 @@ class ModelFactory:
             self.print_trainable_ratio(model)
 
             return model
+        
+        # Load Vision Transformer (ViT) from Hugging Face
+        if self.model_name == "vit_omnivec":
+            print("Loading Vision Transformer (ViT) - Omnivec model from Hugging Face.")
+            model = AutoModelForImageClassification.from_pretrained("google/vit-base-patch16-224-in21k")
+            
+            # Freeze all layers except the classifier layer
+            for name, param in model.named_parameters():
+                if "classifier" not in name:
+                    param.requires_grad = False
+
+            model.classifier = nn.Linear(model.classifier.in_features, nclasses)
+
+            # Print the ratio of trainable parameters
+            self.print_trainable_ratio(model)
+
+            return model
 
         else:
             raise NotImplementedError("Model not implemented")
@@ -121,6 +140,13 @@ class ModelFactory:
             else:
                 return data_transforms_resnet
         if self.model_name == "resnet50":
+            print("Using data_transforms_resnet")
+            if self.augment:
+                print("Using data augmentation")
+                return data_transforms_resnet_augmented
+            else:
+                return data_transforms_resnet
+        if self.model_name == "vit_omnivec":
             print("Using data_transforms_resnet")
             if self.augment:
                 print("Using data augmentation")
@@ -155,12 +181,23 @@ class ModelFactory:
         ratio = trainable_params / total_params
         print(f"Trainable parameters ratio: {ratio:.4f}")
 
+
     def print_summary(self):
-        # Print the summary of the model using torchsummary
-        if self.use_cuda:
-            summary(self.model, input_size=(3, 224, 224), device="cuda")
+        # Print the summary of the model using torchinfo or a different approach for ViT
+        input_size = (3, 224, 224)  # ViT expects 224x224 input size
+        
+        if 'vit' in self.model_name:
+            print("Using torchinfo for Vision Transformer (ViT) model.")
+            try:
+                torchinfo_summary(self.model, input_size=(1, *input_size), device="cuda" if self.use_cuda else "cpu")
+            except Exception as e:
+                print(f"Error in torchinfo summary for ViT: {e}")
         else:
-            summary(self.model, input_size=(3, 224, 224), device="cpu")
+            print("Using torchsummary for standard model.")
+            if self.use_cuda:
+                summary(self.model, input_size=input_size, device="cuda")
+            else:
+                summary(self.model, input_size=input_size, device="cpu")
 
     def get_model(self):
         return self.model
