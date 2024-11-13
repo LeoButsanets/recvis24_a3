@@ -357,7 +357,7 @@ def main():
     patience = args.patience
     
     # Initialize Weights & Biases
-    wandb.init(project="AS3", name=args.model_name, config=args)
+    wandb.init(project="AS3", name=model_name_save, config=args)
     for epoch in range(start_epoch + 1, start_epoch + args.epochs + 1):
         # training loop
         train_accuracy = train(model, optimizer, train_loader, use_cuda, epoch, args, writer)
