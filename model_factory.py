@@ -126,6 +126,22 @@ class ModelFactory:
             self.print_trainable_ratio(model)
 
             return model
+        # Load DinoV2 model from Hugging Face
+        if self.model_name == "dinov2":
+            print("Loading DinoV2 model from Hugging Face.")
+            model = AutoModelForImageClassification.from_pretrained("facebook/dinov2-base")
+            
+            # Freeze all layers except the classifier layer
+            for name, param in model.named_parameters():
+                if "classifier" not in name:
+                    param.requires_grad = False
+
+            model.classifier = nn.Linear(model.classifier.in_features, nclasses)
+
+            # Print the ratio of trainable parameters
+            self.print_trainable_ratio(model)
+
+            return model
 
         else:
             raise NotImplementedError("Model not implemented")
@@ -147,6 +163,13 @@ class ModelFactory:
             else:
                 return data_transforms_resnet
         if self.model_name == "vit_omnivec":
+            print("Using data_transforms_resnet")
+            if self.augment:
+                print("Using data augmentation")
+                return data_transforms_resnet_augmented
+            else:
+                return data_transforms_resnet
+        if self.model_name == "dinov2":
             print("Using data_transforms_resnet")
             if self.augment:
                 print("Using data augmentation")
@@ -186,7 +209,7 @@ class ModelFactory:
         # Print the summary of the model using torchinfo or a different approach for ViT
         input_size = (3, 224, 224)  # ViT expects 224x224 input size
         
-        if 'vit' in self.model_name:
+        if 'vit' in self.model_name or "dinov2" in self.model_name:
             print("Using torchinfo for Vision Transformer (ViT) model.")
             try:
                 torchinfo_summary(self.model, input_size=(1, *input_size), device="cuda" if self.use_cuda else "cpu")
