@@ -1,4 +1,4 @@
-from data import data_transforms, data_transforms_resnet, data_transforms_sketch
+from data import data_transforms, data_transforms_resnet, data_transforms_sketch, data_transforms_resnet_augmented
 from model import Net
 import os
 import torch
@@ -115,10 +115,14 @@ class ModelFactory:
         if self.model_name == "basic_cnn":
             return data_transforms
         if self.model_name == "resnet18":
-            return data_transforms_sketch
+            if self.augment:
+                print("Using data augmentation")
+                return data_transforms_resnet_augmented
+            else:
+                return data_transforms_resnet
         if self.model_name == "resnet50":
             print("Using data_transforms_resnet")
-            return data_transforms_sketch
+            return data_transforms_resnet_augmented
         if self.model_name.startswith("huggingface/"):
             # Use the same transforms as resnet for simplicity
             return data_transforms_resnet

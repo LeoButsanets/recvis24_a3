@@ -119,6 +119,12 @@ def opts() -> argparse.ArgumentParser:
         default=3,
         help="Number of layers to freeze"
     )
+    parser.add_argument(
+        "--data_augmentation",
+        type=bool,
+        default=True,
+        help="Whether to use data augmentation or not"
+    )
     args = parser.parse_args()
 
     # Load parameters from config file if specified
@@ -280,7 +286,7 @@ def main():
 
     # Create logs directory if it doesn't exist
     random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-    model_name_save = f"{args.model_name}/k_layers_{args.k_layers}_batch_size_{args.batch_size}_lr_{args.lr}_{random_str}"
+    model_name_save = f"{args.model_name}/k_layers_{args.k_layers}_batch_size_{args.batch_size}_lr_{args.lr}_{random_str}" + ("_augmented" if args.data_augmentation else "")
 
     log_dir = os.path.join('logs', model_name_save)
     if not os.path.exists(log_dir):
@@ -299,7 +305,7 @@ def main():
                 break
 
     # Load model and transform
-    model, data_transforms, optimizer_state, start_epoch = ModelFactory(args.model_name, args.train_full_model, args.k_layers, checkpoint_path, use_cuda).get_all()
+    model, data_transforms, optimizer_state, start_epoch = ModelFactory(args.model_name, args.train_full_model, args.k_layers, checkpoint_path=checkpoint_path, use_cuda=use_cuda, augment=args.data_augmentation).get_all()
     
     if use_cuda:
         print("Using GPU")
