@@ -175,7 +175,7 @@ def train(
             data, target = data.cuda(), target.cuda()
         optimizer.zero_grad()
         output = model(data)
-        if args.model_name == "vit_omnivec":
+        if args.model_name in ["vit_omnivec", "dinov2"]:
             output = output.logits
         criterion = torch.nn.CrossEntropyLoss(reduction="mean")
         loss = criterion(output, target)

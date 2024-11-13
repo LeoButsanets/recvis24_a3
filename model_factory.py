@@ -37,16 +37,16 @@ class ModelFactory:
         optimizer_state = None
         start_epoch = 0
 
-        if self.checkpoint_path is not None and os.path.exists(self.checkpoint_path):
-            print(f"Loading existing model from {self.checkpoint_path}")
-            model = self._create_model_instance()
-            checkpoint = torch.load(self.checkpoint_path) if self.use_cuda else torch.load(self.checkpoint_path, map_location=torch.device('cpu'))
-            model.load_state_dict(checkpoint['model_state_dict'])
-            optimizer_state = checkpoint.get('optimizer_state_dict', None)
-            start_epoch = checkpoint.get('epoch', 0)
-        else:
-            print(f"No existing model found. Initializing a new {self.model_name} model.")
-            model = self._create_model_instance()
+        # if self.checkpoint_path is not None and os.path.exists(self.checkpoint_path):
+        #     print(f"Loading existing model from {self.checkpoint_path}")
+        #     model = self._create_model_instance()
+        #     checkpoint = torch.load(self.checkpoint_path) if self.use_cuda else torch.load(self.checkpoint_path, map_location=torch.device('cpu'))
+        #     model.load_state_dict(checkpoint['model_state_dict'])
+        #     optimizer_state = checkpoint.get('optimizer_state_dict', None)
+        #     start_epoch = checkpoint.get('epoch', 0)
+        # else:
+        print(f"No existing model found. Initializing a new {self.model_name} model.")
+        model = self._create_model_instance()
 
         return model, optimizer_state, start_epoch
 
