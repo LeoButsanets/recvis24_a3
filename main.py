@@ -175,6 +175,8 @@ def train(
             data, target = data.cuda(), target.cuda()
         optimizer.zero_grad()
         output = model(data)
+        if args.model_name == "vit_omnivec":
+            output = output.logits
         criterion = torch.nn.CrossEntropyLoss(reduction="mean")
         loss = criterion(output, target)
         loss.backward()
@@ -233,6 +235,7 @@ def validation(
         if use_cuda:
             data, target = data.cuda(), target.cuda()
         output = model(data)
+        output = output.logits
         # sum up batch loss
         criterion = torch.nn.CrossEntropyLoss(reduction="mean")
         validation_loss += criterion(output, target).data.item()

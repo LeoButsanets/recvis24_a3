@@ -113,7 +113,7 @@ class ModelFactory:
         # Load Vision Transformer (ViT) from Hugging Face
         if self.model_name == "vit_omnivec":
             print("Loading Vision Transformer (ViT) - Omnivec model from Hugging Face.")
-            model = AutoModelForImageClassification.from_pretrained("google/vit-base-patch16-224-in21k")
+            model = AutoModelForImageClassification.from_pretrained("google/vit-large-patch16-224")
             
             # Freeze all layers except the classifier layer
             for name, param in model.named_parameters():
