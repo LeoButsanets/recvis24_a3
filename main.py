@@ -15,7 +15,6 @@ import string
 
 import wandb
 
-patience = 3
 
 def opts() -> argparse.ArgumentParser:
     """Option Handling Function."""
@@ -379,6 +378,7 @@ def main():
             no_improve_epochs = 0  # Reset the patience counter when an improvement is seen
 
         else:
+            print("No improvement in validation loss")
             no_improve_epochs += 1
 
         if no_improve_epochs >= patience:

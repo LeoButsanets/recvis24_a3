@@ -21,7 +21,6 @@ data_augmentation = transforms.Compose([
 ])
 
 
-
 data_transforms_resnet = transforms.Compose(
     [
         transforms.Resize((224, 224)),

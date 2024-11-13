@@ -124,7 +124,7 @@ class ModelFactory:
             print("Using data_transforms_resnet")
             if self.augment:
                 print("Using data augmentation")
-                return data_transforms_sketch
+                return data_transforms_resnet_augmented
             else:
                 return data_transforms_resnet
         if self.model_name.startswith("huggingface/"):
