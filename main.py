@@ -125,7 +125,7 @@ def opts() -> argparse.ArgumentParser:
         "--k_layers",
         type=int,
         default=3,
-        help="Number off layers to freeze"
+        help="Number of layers to freeze"
     )
     parser.add_argument(
         "--data_augmentation",
