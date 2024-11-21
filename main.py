@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torchvision import datasets
 from torch.utils.tensorboard import SummaryWriter
+from sklearn.metrics import precision_score, recall_score, f1_score
 
 from model_factory import ModelFactory
 import random
@@ -129,7 +130,7 @@ def opts() -> argparse.ArgumentParser:
     parser.add_argument(
         "--data_augmentation",
         type=bool,
-        default=True,
+        default=False,
         help="Whether to use data augmentation or not"
     )
     args = parser.parse_args()
@@ -158,35 +159,33 @@ def train(
     args: argparse.ArgumentParser,
     writer: SummaryWriter,
 ) -> None:
-    """Default Training Loop.
-
-    Args:
-        model (nn.Module): Model to train
-        optimizer (torch.optimizer): Optimizer to use
-        train_loader (torch.utils.data.DataLoader): Training data loader
-        use_cuda (bool): Whether to use cuda or not
-        epoch (int): Current epoch
-        args (argparse.ArgumentParser): Arguments parsed from command line
-    """
     model.train()
     correct = 0
+    all_preds = []
+    all_targets = []
+    
     for batch_idx, (data, target) in tqdm(enumerate(train_loader)):
         if use_cuda:
             data, target = data.cuda(), target.cuda()
+        
         optimizer.zero_grad()
         output = model(data)
         if args.model_name in ["vit_omnivec", "dinov2", "dinov2_large"]:
             output = output.logits
+        
         criterion = torch.nn.CrossEntropyLoss(reduction="mean")
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
+
         pred = output.data.max(1, keepdim=True)[1]
         correct += pred.eq(target.data.view_as(pred)).cpu().sum()
 
+        all_preds.extend(pred.cpu().numpy().flatten())
+        all_targets.extend(target.cpu().numpy().flatten())
+
         # Log the loss to TensorBoard and Weights & Biases
         writer.add_scalar('Training Loss', loss.item(), epoch * len(train_loader) + batch_idx)
-        
 
         if batch_idx % args.log_interval == 0:
             print(
@@ -200,14 +199,29 @@ def train(
             )
             wandb.log({"Training Loss": loss.item(), "epoch": epoch * len(train_loader) + batch_idx})
 
+    # Calculate precision, recall, and F1 score
+    precision = precision_score(all_targets, all_preds, average='macro')
+    recall = recall_score(all_targets, all_preds, average='macro')
+    f1 = f1_score(all_targets, all_preds, average='macro')
+    
     accuracy = 100.0 * correct / len(train_loader.dataset)
+
+    # Log metrics
+    wandb.log({
+        "Training Accuracy": accuracy,
+        "Training Precision": precision,
+        "Training Recall": recall,
+        "Training F1 Score": f1,
+        "epoch": epoch
+    })
+
     print(
         "\nTrain set: Accuracy: {}/{} ({:.0f}%)\n".format(
             correct,
             len(train_loader.dataset),
             accuracy,
         )
-    ) 
+    )
 
     return accuracy
 
@@ -219,38 +233,50 @@ def validation(
     args: argparse.ArgumentParser,
     writer: SummaryWriter,
 ) -> float:
-    """Default Validation Loop.
-
-    Args:
-        model (nn.Module): Model to train
-        val_loader (torch.utils.data.DataLoader): Validation data loader
-        use_cuda (bool): Whether to use cuda or not
-
-    Returns:
-        float: Validation loss
-    """
     model.eval()
     validation_loss = 0
     correct = 0
+    all_preds = []
+    all_targets = []
+
     for data, target in val_loader:
         if use_cuda:
             data, target = data.cuda(), target.cuda()
+
         output = model(data)
-        output = output.logits if args.model_name in ["vit_omnivec", "dinov2"] else output
-        # sum up batch loss
+        output = output.logits if args.model_name in ["vit_omnivec", "dinov2", "dinov2_large"] else output
+
+        # Calculate loss
         criterion = torch.nn.CrossEntropyLoss(reduction="mean")
         validation_loss += criterion(output, target).data.item()
-        # get the index of the max log-probability
+
+        # Get the predictions
         pred = output.data.max(1, keepdim=True)[1]
         correct += pred.eq(target.data.view_as(pred)).cpu().sum()
+
+        all_preds.extend(pred.cpu().numpy().flatten())
+        all_targets.extend(target.cpu().numpy().flatten())
 
     validation_loss /= len(val_loader.dataset)
     accuracy = 100. * correct / len(val_loader.dataset)
 
-    # Log validation loss and accuracy to TensorBoard and Weights & Biases
+    # Calculate precision, recall, and F1 score
+    precision = precision_score(all_targets, all_preds, average='macro')
+    recall = recall_score(all_targets, all_preds, average='macro')
+    f1 = f1_score(all_targets, all_preds, average='macro')
+
+    # Log metrics
+    wandb.log({
+        "Validation Loss": validation_loss,
+        "Validation Accuracy": accuracy,
+        "Validation Precision": precision,
+        "Validation Recall": recall,
+        "Validation F1 Score": f1,
+        "epoch": epoch
+    })
+
     writer.add_scalar('Validation Accuracy', accuracy, epoch)
-    
-    
+
     print(
         "\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)".format(
             validation_loss,
@@ -319,6 +345,7 @@ def main():
     #             break
 
     # Load model and transform
+    print(args.data_augmentation)
     model, data_transforms, optimizer_state, start_epoch = ModelFactory(args.model_name, args.train_full_model, args.k_layers, checkpoint_path=None, use_cuda=use_cuda, augment=args.data_augmentation).get_all()
     
     if use_cuda:
