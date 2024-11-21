@@ -308,18 +308,18 @@ def main():
     
     # Tensorboard writer
     writer = SummaryWriter(log_dir=log_dir)
-    checkpoint_path = None
-    if args.checkpoint is not None:
-        print(f"Loading model from {args.checkpoint}")
-        checkpoint_path = args.checkpoint
-    else:
-        for file in os.listdir(args.experiment):
-            if file.startswith("best_model"):
-                checkpoint_path = os.path.join(args.experiment, file)
-                break
+    # checkpoint_path = None
+    # if args.checkpoint is not None:
+    #     print(f"Loading model from {args.checkpoint}")
+    #     checkpoint_path = args.checkpoint
+    # else:
+    #     for file in os.listdir(args.experiment):
+    #         if file.startswith("best_model"):
+    #             checkpoint_path = os.path.join(args.experiment, file)
+    #             break
 
     # Load model and transform
-    model, data_transforms, optimizer_state, start_epoch = ModelFactory(args.model_name, args.train_full_model, args.k_layers, checkpoint_path=checkpoint_path, use_cuda=use_cuda, augment=args.data_augmentation).get_all()
+    model, data_transforms, optimizer_state, start_epoch = ModelFactory(args.model_name, args.train_full_model, args.k_layers, checkpoint_path=None, use_cuda=use_cuda, augment=args.data_augmentation).get_all()
     
     if use_cuda:
         print("Using GPU")
