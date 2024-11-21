@@ -116,7 +116,7 @@ def main() -> None:
             output = model(data)
             
             # if the model is a dino model or a vit model, we need to access the logits attribute
-            if args.model_name in ["vit_omnivec", "dinov2"]:
+            if args.model_name in ["vit_omnivec", "dinov2", "dinov2_large"]:
                 output = output.logits
 
             pred = output.data.max(1, keepdim=True)[1]
