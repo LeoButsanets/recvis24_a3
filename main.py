@@ -125,7 +125,7 @@ def opts() -> argparse.ArgumentParser:
         "--k_layers",
         type=int,
         default=3,
-        help="Number of layers to freeze"
+        help="Number off layers to freeze"
     )
     parser.add_argument(
         "--data_augmentation",
@@ -319,6 +319,8 @@ def main():
     # Set the seed (for reproducibility)
     torch.manual_seed(args.seed)
     args.experiment = os.path.join(args.experiment, args.model_name)
+
+    args.data_augmentation = False
 
     # Create experiment folder
     if not os.path.isdir(args.experiment):
