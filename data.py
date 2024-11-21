@@ -4,6 +4,14 @@ import torch
 import random
 import torchvision.transforms as transforms
 
+# Define enhanced data augmentation with more diverse transformations
+data_augmentation = transforms.Compose([
+    transforms.RandomHorizontalFlip(p=0.3),  # Increase probability for horizontal flip
+    transforms.RandomRotation(degrees=5, fill=(255, 255, 255)),  # Increase rotation angle to add more variety
+    transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),  # Apply slight changes in brightness, contrast, etc.
+    transforms.RandomAffine(degrees=1, translate=(0.1, 0.1), scale=(0.9, 1.1), fill=(255, 255, 255)),  # Add random affine transformations
+])
+
 
 data_transforms = transforms.Compose(
     [
@@ -14,13 +22,6 @@ data_transforms = transforms.Compose(
 )
 
 
-# Define enhanced data augmentation with more diverse transformations
-data_augmentation = transforms.Compose([
-    transforms.RandomHorizontalFlip(p=0.3),  # Increase probability for horizontal flip
-    transforms.RandomRotation(degrees=5, fill=(255, 255, 255)),  # Increase rotation angle to add more variety
-    transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),  # Apply slight changes in brightness, contrast, etc.
-    transforms.RandomAffine(degrees=1, translate=(0.1, 0.1), scale=(0.9, 1.1), fillcolor=(255, 255, 255)),  # Add random affine transformations
-])
 
 
 data_transforms_resnet = transforms.Compose(
@@ -40,23 +41,7 @@ data_transforms_resnet_augmented = transforms.Compose(
     ]
 )
 
-data_transforms_resnet_augmented = transforms.Compose(
-    [
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ]
-)  
-
-
-
-
-
-
-
-
-
-
+### Sketch data augmentation
 
 class InvertColorsIfNeeded:
     def __call__(self, img):

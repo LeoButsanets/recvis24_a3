@@ -299,8 +299,8 @@ def main():
         os.makedirs(args.experiment)
 
     # Create logs directory if it doesn't exist
-    random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-    model_name_save = f"{args.model_name}/k_layers_{args.k_layers}_batch_size_{args.batch_size}_lr_{args.lr}" + ("_augmented" if args.data_augmentation else "" ) + f"_{random_str}"
+    model_name_save = args.model_name + f"unfreezed_layers_{args.k_layers}_last_layers" if args.k_layers > 0 else args.model_name
+    model_name_save +=  f"_batch_size_{args.batch_size}_lr_{args.lr}" + ("_augmented" if args.data_augmentation else "" ) 
 
     log_dir = os.path.join('logs', model_name_save)
     if not os.path.exists(log_dir):

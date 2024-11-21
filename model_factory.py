@@ -24,6 +24,10 @@ class ModelFactory:
         self.model, self.optimizer_state, self.start_epoch = self.init_model()
         self.transform = self.init_transform()
 
+
+        # Print the ratio of trainable parameters
+        self.print_trainable_ratio(self.model)
+        
         # Move model to correct device
         print(f"Moving model to {'cuda' if self.use_cuda else 'cpu'}")
         if self.use_cuda:
@@ -68,8 +72,7 @@ class ModelFactory:
 
             model.fc = nn.Linear(model.fc.in_features, nclasses)
 
-            # Print the ratio of trainable parameters
-            self.print_trainable_ratio(model)
+   
 
             return model
 
@@ -95,20 +98,6 @@ class ModelFactory:
 
             return model
 
-        # Load a model from Hugging Face Model Hub
-        if self.model_name.startswith("huggingface/"):
-            print(f"Loading model from Hugging Face: {self.model_name}")
-            model = AutoModelForImageClassification.from_pretrained(self.model_name)
-            model.classifier = nn.Linear(model.classifier.in_features, nclasses)
-
-            # Freeze all layers except the last specified layers
-            if self.freeze_layers > 0 and not self.train_full_model:
-                self._set_k_conv_trainable_layers(self.freeze_layers, model)
-
-            # Print the ratio of trainable parameters
-            self.print_trainable_ratio(model)
-
-            return model
         
         # Load Vision Transformer (ViT) from Hugging Face
         if self.model_name == "vit_omnivec":
@@ -122,8 +111,6 @@ class ModelFactory:
 
             model.classifier = nn.Linear(model.classifier.in_features, nclasses)
 
-            # Print the ratio of trainable parameters
-            self.print_trainable_ratio(model)
 
             return model
         # Load DinoV2 model from Hugging Face
@@ -138,8 +125,18 @@ class ModelFactory:
 
             model.classifier = nn.Linear(model.classifier.in_features, nclasses)
 
-            # Print the ratio of trainable parameters
-            self.print_trainable_ratio(model)
+
+            return model
+        if self.model_name == "dinov2_large":
+            print("Loading DinoV2 model from Hugging Face.")
+            model = AutoModelForImageClassification.from_pretrained("facebook/dinov2-large")
+            
+            # Freeze all layers except the classifier layer
+            for name, param in model.named_parameters():
+                if "classifier" not in name:
+                    param.requires_grad = False
+
+            model.classifier = nn.Linear(model.classifier.in_features, nclasses)
 
             return model
 
@@ -149,36 +146,12 @@ class ModelFactory:
     def init_transform(self):
         if self.model_name == "basic_cnn":
             return data_transforms
-        if self.model_name == "resnet18":
-            if self.augment:
-                print("Using data augmentation")
-                return data_transforms_sketch
-            else:
-                return data_transforms_resnet
-        if self.model_name == "resnet50":
-            print("Using data_transforms_resnet")
+        if self.model_name in ["dinov2", "dinov2_large", "resnet18", "resnet50", "vit_omnivec"]:
             if self.augment:
                 print("Using data augmentation")
                 return data_transforms_resnet_augmented
             else:
                 return data_transforms_resnet
-        if self.model_name == "vit_omnivec":
-            print("Using data_transforms_resnet")
-            if self.augment:
-                print("Using data augmentation")
-                return data_transforms_resnet_augmented
-            else:
-                return data_transforms_resnet
-        if self.model_name == "dinov2":
-            print("Using data_transforms_resnet")
-            if self.augment:
-                print("Using data augmentation")
-                return data_transforms_sketch_augmented
-            else:
-                return data_transforms_sketch
-        if self.model_name.startswith("huggingface/"):
-            # Use the same transforms as resnet for simplicity
-            return data_transforms_resnet
         else:
             raise NotImplementedError("Transform not implemented")
 
